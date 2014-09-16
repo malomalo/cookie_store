@@ -14,6 +14,7 @@ require 'faker'
 require 'webmock/minitest'
 require "mocha"
 require "mocha/mini_test"
+require 'active_support/time'
 require 'active_support/testing/time_helpers'
 
 Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new

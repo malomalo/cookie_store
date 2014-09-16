@@ -2,7 +2,7 @@ class CookieStore::Cookie
 
   QUOTED_PAIR   = "\\\\[\\x00-\\x7F]"
   LWS           = "\\r\\n(?:[ \\t]+)"
-  QDTEXT        = "[\\t\\x20-\\x21\\x23-\\x7E\\x80-\\xFF]|(?:#{LWS})"
+  QDTEXT        = "[\\t\\x20-\\x21\\x23-\\x3A\\x3C-\\x7E\\x80-\\xFF]|(?:#{LWS})"
   QUOTED_TEXT   = "(?:#{QUOTED_PAIR}|#{QDTEXT})*"
   IPADDR        = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
     

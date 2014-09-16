@@ -196,6 +196,24 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal nil,           cookie.expires
     assert_equal nil,           cookie.max_age
   end
+  
+  test "::parse a cookie with options" do
+    cookie = CookieStore::Cookie.parse('http://google.com/test', "foo=bar; path=/; HttpOnly")
+
+    assert_equal 'foo',         cookie.name
+    assert_equal 'bar',         cookie.value
+    assert_equal 'google.com',  cookie.domain
+    assert_equal '/',           cookie.path
+    assert_equal false,         cookie.secure
+    assert_equal true,          cookie.http_only
+    assert_equal nil,           cookie.comment
+    assert_equal nil,           cookie.comment_url
+    assert_equal 1,             cookie.version
+    assert_equal false,         cookie.discard
+    assert_equal nil,           cookie.ports
+    assert_equal nil,           cookie.expires
+    assert_equal nil,           cookie.max_age
+  end
 
   test "::parse normalizes the request domain" do
     cookie = CookieStore::Cookie.parse('http://GoOGlE.com/test', "foo=bar")
