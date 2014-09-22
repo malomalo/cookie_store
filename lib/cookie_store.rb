@@ -17,7 +17,7 @@ class CookieStore
     cookie = CookieStore::Cookie.parse(request_uri, set_cookie_value)
 
     # reject as per RFC2965 Section 3.3.2
-    return if !cookie.request_match?(request_uri) || !(cookie.domain =~ /.+\..+/)
+    return if !cookie.request_match?(request_uri) || !(cookie.domain =~ /.+\..+/ || cookie.domain == 'localhost')
     
     # reject cookies over the max-bytes
     return if cookie.to_s.size > MAX_COOKIE_LENGTH

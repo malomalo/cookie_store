@@ -6,9 +6,11 @@ class CookieStoreTest < Minitest::Test
   
   test "#set_cookie" do
     store = CookieStore.new
-    store.expects(:add)
+    store.expects(:add).times(3)
     
     store.set_cookie('http://google.com/test/this', 'foo=bar; Max-Age=3600')
+    store.set_cookie('http://localhost/test/this', 'foo=bar; Max-Age=3600')
+    store.set_cookie('http://127.0.0.1/test/this', 'foo=bar; Max-Age=3600')
   end
   
   test "#set_cookie rejects cookies where the value for the Domain attribute contains no embedded dots" do
