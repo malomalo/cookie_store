@@ -318,6 +318,13 @@ class CookieStore::CookieTest < Minitest::Test
     
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13-Jan-2021 22:23:01 GMT"')
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    # Wed, 13 Jan 2021 22:23:01 -0000 format
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13 Jan 2021 22:23:01 -0000')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13 Jan 2021 22:23:01 +0000"')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
   end
   
   test "::parse max_age attribute" do

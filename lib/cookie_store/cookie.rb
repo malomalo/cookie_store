@@ -8,7 +8,8 @@ class CookieStore::Cookie
     
   TOKEN         = '[^(),\/<>@;:\\\"\[\]?={}\s]+'
   VALUE         = "(?:#{TOKEN}|#{IPADDR}|#{QUOTED_TEXT})"
-  EXPIRES_AT_VALUE = '[A-Za-z]{3},\ \d{2}[-\ ][A-Za-z]{3}[-\ ]\d{4}\ \d{2}:\d{2}:\d{2}\ [A-Z]{3}'
+  EXPIRES_AT_VALUE = '[A-Za-z]{3},\ \d{2}[-\ ][A-Za-z]{3}[-\ ]\d{4}\ \d{2}:\d{2}:\d{2}\ (?:[A-Z]{3}|[-+]\d{4})'
+  NUMERICAL_TIMEZONE = /[-+]\d{4}$/
           
   COOKIE    = /(?<name>#{TOKEN})=(?:"(?<quoted_value>#{QUOTED_TEXT})"|(?<value>#{VALUE}))(?<attributes>.*)/n
   COOKIE_AV = %r{
@@ -209,7 +210,7 @@ class CookieStore::Cookie
             options[:domain] = (value.start_with?('.') ? value : ".#{value}").downcase
           end
         when 'expires'
-          if value.include?('-')
+          if value.include?('-') && !value.match(NUMERICAL_TIMEZONE)
             options[:expires] = DateTime.strptime(value, '%a, %d-%b-%Y %H:%M:%S %Z')
           else
             options[:expires] = DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
