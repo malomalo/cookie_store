@@ -331,6 +331,28 @@ class CookieStore::CookieTest < Minitest::Test
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Max-Age=3660')
     assert_equal 3660, cookie.max_age
   end
+
+  test "::parse_cookies with one cookie" do
+    cookies = CookieStore::Cookie.parse_cookies("http://google.com/test/this", "current_account_id=2449; path=/")
+
+    assert_equal "current_account_id",  cookies.first.name
+    assert_equal "2449",                cookies.first.value
+    assert_equal "/",                   cookies.first.path
+  end
+    
+  test "::parse_cookies with multiple cookies" do
+    cookies = CookieStore::Cookie.parse_cookies("http://google.com/test/this", "current_account_id=2449; path=/, _session=QUZwVE5jNjB; path=/test; expires=Wed, 13-Jan-2021 22:23:01 GMT; HttpOnly")
+
+    assert_equal "current_account_id",  cookies.first.name
+    assert_equal "2449",                cookies.first.value
+    assert_equal "/",                   cookies.first.path
+    
+    assert_equal "_session",            cookies[1].name
+    assert_equal "QUZwVE5jNjB",         cookies[1].value
+    assert_equal "/test",               cookies[1].path
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookies[1].expires
+    assert_equal true,                  cookies[1].http_only
+  end
   
   # TODO: test expires_at, based on expires attribute
   # TODO: test expires_at, based on max-age attribute

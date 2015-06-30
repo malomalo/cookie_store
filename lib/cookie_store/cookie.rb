@@ -7,10 +7,11 @@ class CookieStore::Cookie
   IPADDR        = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
     
   TOKEN         = '[^(),\/<>@;:\\\"\[\]?={}\s]+'
-  VALUE         = "(?:#{TOKEN}|#{IPADDR}|#{QUOTED_TEXT})"
+  VALUE         = "(?:#{TOKEN}|#{IPADDR}|[^,;\\s]+)"
   EXPIRES_AT_VALUE = '[A-Za-z]{3},\ \d{2}[-\ ][A-Za-z]{3}[-\ ]\d{4}\ \d{2}:\d{2}:\d{2}\ (?:[A-Z]{3}|[-+]\d{4})'
   NUMERICAL_TIMEZONE = /[-+]\d{4}$/
-          
+  
+
   COOKIE    = /(?<name>#{TOKEN})=(?:"(?<quoted_value>#{QUOTED_TEXT})"|(?<value>#{VALUE}))(?<attributes>.*)/n
   COOKIE_AV = %r{
     ;\s+
@@ -24,6 +25,12 @@ class CookieStore::Cookie
       )
     ){0,1}
   }nx
+  COOKIES = %r{
+      #{TOKEN}=(?:"#{QUOTED_TEXT}"|#{VALUE})
+      (?:;\s+#{TOKEN}(?:=(?:"#{QUOTED_TEXT}"|(?:#{EXPIRES_AT_VALUE}|#{VALUE}))){0,1})*
+  }nx
+  
+
   
   # [String] The name of the cookie.
   attr_reader :name
@@ -177,6 +184,15 @@ class CookieStore::Cookie
   def port_match(request_port)
     return true unless ports
     ports.include?(request_port)
+  end
+  
+  def self.parse_cookies(request_uri, set_cookie_value)
+    uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
+    cookies = []
+    set_cookie_value.scan(COOKIES) do |cookie|
+      cookies << parse(uri, cookie)
+    end
+    cookies
   end
   
   def self.parse(request_uri, set_cookie_value)

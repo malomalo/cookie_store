@@ -14,15 +14,16 @@ class CookieStore
   # Read and set the cookie from the Set-Cookie header
   def set_cookie(request_uri, set_cookie_value)
     request_uri = URI.parse(request_uri)
-    cookie = CookieStore::Cookie.parse(request_uri, set_cookie_value)
-
-    # reject as per RFC2965 Section 3.3.2
-    return if !cookie.request_match?(request_uri) || !(cookie.domain =~ /.+\..+/ || cookie.domain == 'localhost')
     
-    # reject cookies over the max-bytes
-    return if cookie.to_s.size > MAX_COOKIE_LENGTH
+    CookieStore::Cookie.parse_cookies(request_uri, set_cookie_value).each do |cookie|
+      # reject as per RFC2965 Section 3.3.2
+      return if !cookie.request_match?(request_uri) || !(cookie.domain =~ /.+\..+/ || cookie.domain == 'localhost')
     
-    add(cookie) 
+      # reject cookies over the max-bytes
+      return if cookie.to_s.size > MAX_COOKIE_LENGTH
+    
+      add(cookie) 
+    end
   end
   
   def cookie_header_for(request_uri)

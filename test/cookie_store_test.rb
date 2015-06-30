@@ -13,6 +13,13 @@ class CookieStoreTest < Minitest::Test
     store.set_cookie('http://127.0.0.1/test/this', 'foo=bar; Max-Age=3600')
   end
   
+  test "#set_cookie contains multiple cookies" do
+    store = CookieStore.new
+    store.expects(:add).times(2)
+    
+    store.set_cookie("http://google.com/test/this", "current_account_id=2449; path=/, _session=QUZwVE5jNjB; path=/test; expires=Wed, 13-Jan-2021 22:23:01 GMT; HttpOnly")
+  end
+  
   test "#set_cookie rejects cookies where the value for the Domain attribute contains no embedded dots" do
     store = CookieStore.new
     store.expects(:add).never

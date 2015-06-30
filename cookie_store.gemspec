@@ -3,7 +3,7 @@ $:.push File.expand_path("../lib", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "cookie_store"
-  s.version     = '0.1.2'
+  s.version     = '0.1.4'
   s.authors     = ["Jon Bracy"]
   s.email       = ["jonbracy@gmail.com"]
   s.homepage    = "https://github.com/malomalo/cookie_store"

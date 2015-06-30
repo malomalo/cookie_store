@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    cookie_store (0.1.2)
+    cookie_store (0.1.4)
 
 GEM
   remote: https://rubygems.org/
@@ -52,3 +52,6 @@ DEPENDENCIES
   mocha
   rake
   webmock
+
+BUNDLED WITH
+   1.10.4
