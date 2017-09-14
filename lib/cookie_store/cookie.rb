@@ -190,7 +190,12 @@ class CookieStore::Cookie
     uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
     cookies = []
     set_cookie_value.scan(COOKIES) do |cookie|
-      cookies << parse(uri, cookie)
+      cookie = parse(uri, cookie)
+      cookies << if block_given?
+        yield(cookie)
+      else
+        cookie
+      end
     end
     cookies
   end
