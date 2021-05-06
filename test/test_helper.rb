@@ -13,7 +13,7 @@ require 'minitest/reporters'
 require 'faker'
 require 'webmock/minitest'
 require "mocha"
-require "mocha/mini_test"
+require "mocha/minitest"
 require 'active_support/time'
 require 'active_support/testing/time_helpers'
 

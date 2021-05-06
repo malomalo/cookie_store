@@ -14,6 +14,8 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
+  s.add_runtime_dependency 'stream_parser'
+  
   # Developoment 
   s.add_development_dependency 'rake'
   # s.add_development_dependency 'rdoc'

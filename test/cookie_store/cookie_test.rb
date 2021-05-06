@@ -13,7 +13,7 @@ class CookieStore::CookieTest < Minitest::Test
   
   test "::new(name, value, options)" do
     #TODO: test all options are set
-    cookie = CookieStore::Cookie.new('foo', 'bar', :domain => 'test.com')
+    cookie = CookieStore::Cookie.new('foo', 'bar', domain: 'test.com')
 
     assert_equal 'test.com', cookie.domain
   end
@@ -106,6 +106,11 @@ class CookieStore::CookieTest < Minitest::Test
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar')
     assert_equal nil, cookie.expires_at
   end
+
+  test "date formats" do
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'expires=Fri, 04-Jun-21 14:13:58 GMT; path=/;')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires_at
+  end
   
   # CookieStore::Cookie.expired? =========================================================
   
@@ -188,13 +193,13 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal '/test',       cookie.path
     assert_equal false,         cookie.secure
     assert_equal false,         cookie.http_only
-    assert_equal nil,           cookie.comment
-    assert_equal nil,           cookie.comment_url
+    assert_nil                  cookie.comment
+    assert_nil                  cookie.comment_url
     assert_equal 1,             cookie.version
     assert_equal false,         cookie.discard
-    assert_equal nil,           cookie.ports
-    assert_equal nil,           cookie.expires
-    assert_equal nil,           cookie.max_age
+    assert_nil                  cookie.ports
+    assert_nil                  cookie.expires
+    assert_nil                  cookie.max_age
   end
   
   test "::parse a cookie with options" do
@@ -206,13 +211,13 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal '/',           cookie.path
     assert_equal false,         cookie.secure
     assert_equal true,          cookie.http_only
-    assert_equal nil,           cookie.comment
-    assert_equal nil,           cookie.comment_url
+    assert_nil                  cookie.comment
+    assert_nil                  cookie.comment_url
     assert_equal 1,             cookie.version
     assert_equal false,         cookie.discard
-    assert_equal nil,           cookie.ports
-    assert_equal nil,           cookie.expires
-    assert_equal nil,           cookie.max_age
+    assert_nil                  cookie.ports
+    assert_nil                  cookie.expires
+    assert_nil                  cookie.max_age
   end
 
   test "::parse normalizes the request domain" do

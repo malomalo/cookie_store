@@ -186,75 +186,21 @@ class CookieStore::Cookie
     ports.include?(request_port)
   end
   
-  def self.parse_cookies(request_uri, set_cookie_value)
-    uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
-    cookies = []
-    set_cookie_value.scan(COOKIES) do |cookie|
-      cookie = parse(uri, cookie)
-      cookies << if block_given?
-        yield(cookie)
-      else
-        cookie
-      end
-    end
-    cookies
-  end
-  
   def self.parse(request_uri, set_cookie_value)
-    uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
-    data = COOKIE.match(set_cookie_value)
-    options = {}
-    
-    if !data
-      raise Net::HTTPHeaderSyntaxError.new("Invalid Set-Cookie header format")
-    end
-    
-    if data[:attributes]
-      data[:attributes].scan(COOKIE_AV) do |key, quoted_value, value|
-        value = quoted_value.gsub(/\\(.)/, '\1') if !value && quoted_value
+    parsed = CookieStore::CookieParser.parse(set_cookie_value, request_uri)
 
-        # RFC 2109 4.1, Attributes (names) are case-insensitive
-        case key.downcase
-        when 'comment'
-          options[:comment] = value
-        when 'commenturl'
-          options[:comment_url] = value
-        when 'discard'
-          options[:discard] = true
-        when 'domain'
-          if value =~ IPADDR
-            options[:domain] = value
-          else
-            # As per RFC2965 if a host name contains no dots, the effective host name is
-            # that name with the string .local appended to it.
-            value = "#{value}.local" if !value.include?('.')
-            options[:domain] = (value.start_with?('.') ? value : ".#{value}").downcase
-          end
-        when 'expires'
-          if value.include?('-') && !value.match(NUMERICAL_TIMEZONE)
-            options[:expires] = DateTime.strptime(value, '%a, %d-%b-%Y %H:%M:%S %Z')
-          else
-            options[:expires] = DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
-          end
-        when 'max-age'
-          options[:max_age] = value.to_i
-        when 'path'
-          options[:path] = value
-        when 'port'
-          options[:ports] = value.split(',').map(&:to_i)
-        when 'secure'
-          options[:secure] = true
-        when 'httponly'
-          options[:http_only] = true
-        when 'version'
-          options[:version] = value.to_i
-        end
-      end
-    end
-    options[:domain]  ||= uri.host.downcase
-    options[:path]    ||= uri.path
+    puts parsed.inspect
+    uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
+    parsed[:attributes][:domain]  ||= uri.host.downcase
+    parsed[:attributes][:path]    ||= uri.path
+        
+    cookie = CookieStore::Cookie.new(parsed[:name], parsed[:value], parsed[:attributes])
     
-    CookieStore::Cookie.new(data[:name], data[:value] || data[:quoted_value].gsub(/\\(.)/, '\1'), options)
+    if block_given?
+      yield(cookie)
+    else
+      cookie
+    end
   end
     
 end
