@@ -94,8 +94,7 @@ class CookieStore::CookieParser
       when /\w{3}, \d{2} \w{3} \d{4} /
         DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
       else
-        nil
-        # DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
+        DateTime.parse(value)
       end
     when :max_age
       value&.to_i
