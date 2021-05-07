@@ -3,12 +3,11 @@ require 'stream_parser'
 class CookieStore::CookieParser
 
   include StreamParser
-
+    
   NUMERICAL_TIMEZONE = /[-+]\d{4}\Z/
   
-  def parse(set_cookie_value)
+  def parse
     cookie = {attributes: {}}
-    current_attribute = nil
     
     @stack = [:cookie_name]
     while !eos?
@@ -16,81 +15,66 @@ class CookieStore::CookieParser
       when :cookie_name
         scan_until(/\s*=\s*/)
         if match == '='
-          @stack.pop
           @stack << :cookie_value
           cookie[:key] = pre_match
         end
       when :cookie_value
-        scan_until(/\s*['";]/)
-        if match.end_with?('"')
-          @stack.pop
-          @stack << :cookie_value_double_quoted
-        elsif match.end_with?("'")
-          @stack.pop
-          @stack << :cookie_value_single_quoted
-        else
-          gobble(/\s*/)
+        scan_until(/\s*(['";]\s*|\Z)/)
+        if match.strip == '"' || match.strip == "'"
+          cookie[:value] = quoted_value(match.strip)
           @stack.pop
           @stack << :cookie_attributes
-          cookie[:value] = pre_match
-        end
-      when :cookie_value_double_quoted
-        scan_until(/(?<=\\)"/)
-        if match == '"'
+        elsif match
           cookie[:value] = pre_match
           @stack.pop
           @stack << :cookie_attributes
-        else
-          raise Net::HTTPHeaderSyntaxError.new(%q{Invalid Set-Cookie header format: unbalanced quotes (")})
-        end
-      when :cookie_value_single_quoted
-        scan_until(/(?<=\\)'/)
-        if match == "'"
-          cookie[:value] = pre_match
-          @stack.pop
-          @stack << :cookie_attributes
-        else
-          raise Net::HTTPHeaderSyntaxError.new(%q{Invalid Set-Cookie header format: unbalanced quotes (')})
         end
       when :cookie_attributes
         # RFC 2109 4.1, Attributes (names) are case-insensitive
-        scan_until(/([=;]\s*|\Z)/)
-        if match.start_with?('=')
-          current_attribute = pre_match.downcase.gsub('-','_').to_sym
-          @stack << if next_char == '"'
-            :cookie_attribute_value_double_quoted
-          elsif next_char == "'"
-            :cookie_attribute_value_single_quoted
+        scan_until(/[,=;]\s*/)
+        if match&.start_with?('=')
+          key = normalize_key(pre_match)
+          scan_until(key == :expires ? /\s*((?<!\w{3}),|['";])\s*/ : /\s*(['";,]\s*|\Z)/)
+          if match =~ /["']\s*\Z/
+            cookie[:attributes][key] = normalize_attribute_value(key, quoted_value(match.strip))
+          elsif match =~ /,\s*\Z/
+            cookie[:attributes][key] = normalize_attribute_value(key, pre_match)
+            yield(cookie)
+            cookie = {attributes: {}}
+            @stack.pop
           else
-            :cookie_attribute_value
+            cookie[:attributes][key] = normalize_attribute_value(key, pre_match)
           end
+        elsif match&.start_with?(',')
+          yield(cookie)
+          cookie = {attributes: {}}
+          @stack.pop
         else
-          cookie[:attributes][pre_match.downcase.gsub('-','_').to_sym] = true
+          cookie[:attributes][normalize_key(pre_match)] = true
         end
-      when :cookie_attribute_value
-        scan_until(/(;\s*|\Z)/)
-        cookie[:attributes][current_attribute] = normalize_attribute_value(current_attribute, pre_match)
-        @stack.pop
-      when :cookie_attribute_value_double_quoted
-        scan_until(/"\s*(;\s*|\Z)/)
-        cookie[:attributes][current_attribute] = normalize_attribute_value(current_attribute, pre_match)
-        @stack.pop
-      when :cookie_attribute_value_single_quoted
-        scan_until(/'\s*(;\s*|\Z)/)
-        cookie[:attributes][current_attribute] = normalize_attribute_value(current_attribute, pre_match)
-        @stack.pop
       end
     end
     
-    cookie
+    yield(cookie)
+  end
+  
+  def normalize_key(key)
+    key = key.downcase.gsub('-','_')
+    if key == 'port'
+      :ports
+    elsif key == 'httponly'
+      :http_only
+    elsif key == 'commenturl'
+      :comment_url
+    else
+      key.to_sym
+    end
   end
   
   def normalize_attribute_value(key, value)
     case key
     when :domain
-      if value =~ URI::REGEXP::PATTERN::IPV4ADDR
-        value
-      elsif value =~ URI::REGEXP::PATTERN::IPV6ADDR
+      if value =~ CookieStore::Cookie::IPADDR
         value
       else
         # As per RFC2965 if a host name contains no dots, the effective host
@@ -99,17 +83,28 @@ class CookieStore::CookieParser
         (value.start_with?('.') ? value : ".#{value}").downcase
       end
     when :expires
-      if value.include?('-') && !value.match(NUMERICAL_TIMEZONE)
-        options[:expires] = DateTime.strptime(value, '%a, %d-%b-%Y %H:%M:%S %Z')
+      byebug if $debug
+      case value
+      when /\w{3}, \d{2}-\w{3}-\d{2} /
+        DateTime.strptime(value, '%a, %d-%b-%y %H:%M:%S %Z')
+      when /\w{3}, \d{2}-\w{3}-\d{4} /
+        DateTime.strptime(value, '%a, %d-%b-%Y %H:%M:%S %Z')
+      when /\w{3}, \d{2} \w{3} \d{2} /
+        DateTime.strptime(value, '%a, %d %b %y %H:%M:%S %Z')
+      when /\w{3}, \d{2} \w{3} \d{4} /
+        DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
       else
-        options[:expires] = DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
+        nil
+        # DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
       end
     when :max_age
-      value.to_i
-    when :port#s!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      value&.to_i
+    when :ports
       value.split(',').map(&:to_i)
     when :version
       value.to_i
+    else
+      value
     end
   end
   

@@ -14,10 +14,11 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
-  s.add_runtime_dependency 'stream_parser'
+  s.add_runtime_dependency 'stream_parser', '>= 0.2'
   
   # Developoment 
   s.add_development_dependency 'rake'
+  s.add_development_dependency 'byebug'
   # s.add_development_dependency 'rdoc'
   # s.add_development_dependency 'sdoc'
   s.add_development_dependency 'minitest'
@@ -26,4 +27,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'faker'
   s.add_development_dependency 'webmock'
   s.add_development_dependency 'activesupport'
+  s.add_development_dependency 'simplecov'
 end

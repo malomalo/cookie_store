@@ -1,37 +1,7 @@
 class CookieStore::Cookie
 
-  QUOTED_PAIR   = "\\\\[\\x00-\\x7F]"
-  LWS           = "\\r\\n(?:[ \\t]+)"
-  QDTEXT        = "[\\t\\x20-\\x21\\x23-\\x3A\\x3C-\\x7E\\x80-\\xFF]|(?:#{LWS})"
-  QUOTED_TEXT   = "(?:#{QUOTED_PAIR}|#{QDTEXT})*"
-  IPADDR        = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
-    
-  TOKEN         = '[^(),\/<>@;:\\\"\[\]?={}\s]+'
-  VALUE         = "(?:#{TOKEN}|#{IPADDR}|[^,;\\s]+)"
-  EXPIRES_AT_VALUE = '[A-Za-z]{3},\ \d{2}[-\ ][A-Za-z]{3}[-\ ]\d{4}\ \d{2}:\d{2}:\d{2}\ (?:[A-Z]{3}|[-+]\d{4})'
-  NUMERICAL_TIMEZONE = /[-+]\d{4}$/
-  
+  IPADDR = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
 
-  COOKIE    = /(?<name>#{TOKEN})=(?:"(?<quoted_value>#{QUOTED_TEXT})"|(?<value>#{VALUE}))(?<attributes>.*)/n
-  COOKIE_AV = %r{
-    ;\s+
-    (?<key>#{TOKEN})
-    (?:
-      =
-      (?:
-        "(?<quoted_value>#{QUOTED_TEXT})"
-        |
-        (?<value>#{EXPIRES_AT_VALUE}|#{VALUE})
-      )
-    ){0,1}
-  }nx
-  COOKIES = %r{
-      #{TOKEN}=(?:"#{QUOTED_TEXT}"|#{VALUE})
-      (?:;\s+#{TOKEN}(?:=(?:"#{QUOTED_TEXT}"|(?:#{EXPIRES_AT_VALUE}|#{VALUE}))){0,1})*
-  }nx
-  
-
-  
   # [String] The name of the cookie.
   attr_reader :name
   
@@ -87,7 +57,7 @@ class CookieStore::Cookie
   # [Time] Time when this cookie was first evaluated and created.
   attr_reader :created_at
   
-  def initialize(name, value, options={})
+  def initialize(name, value, attributes={})
     @name = name
     @value = value
     @secure = false
@@ -96,8 +66,12 @@ class CookieStore::Cookie
     @discard = false
     @created_at = Time.now
     
-    options.each do |attr_name, attr_value|
-      self.instance_variable_set(:"@#{attr_name}", attr_value)
+    @attributes = attributes
+
+    %i{name value domain path secure http_only version comment comment_url discard ports expires max_age created_at}.each do |attr_name|
+      if attributes.has_key?(attr_name)
+        self.instance_variable_set(:"@#{attr_name}", attributes[attr_name])
+      end
     end
   end
   
@@ -187,20 +161,27 @@ class CookieStore::Cookie
   end
   
   def self.parse(request_uri, set_cookie_value)
-    parsed = CookieStore::CookieParser.parse(set_cookie_value, request_uri)
-
-    puts parsed.inspect
+    parse_cookies(request_uri, set_cookie_value).first
+  end
+  
+  def self.parse_cookies(request_uri, set_cookie_value)
     uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
-    parsed[:attributes][:domain]  ||= uri.host.downcase
-    parsed[:attributes][:path]    ||= uri.path
-        
-    cookie = CookieStore::Cookie.new(parsed[:name], parsed[:value], parsed[:attributes])
     
-    if block_given?
-      yield(cookie)
-    else
-      cookie
+    cookies = []
+    CookieStore::CookieParser.parse(set_cookie_value) do |parsed|
+      parsed[:attributes][:domain]  ||= uri.host.downcase
+      parsed[:attributes][:path]    ||= uri.path
+
+      cookie = CookieStore::Cookie.new(parsed[:key], parsed[:value], parsed[:attributes])
+
+      cookies << if block_given?
+        yield(cookie)
+      else
+        cookie
+      end
     end
+
+    cookies
   end
     
 end

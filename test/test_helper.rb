@@ -6,6 +6,9 @@ lib = File.expand_path(File.join(root, 'lib'))
 
 $LOAD_PATH << lib
 
+require 'simplecov'
+SimpleCov.start
+
 require 'cookie_store'
 require "minitest/autorun"
 require 'minitest/unit'
@@ -16,8 +19,14 @@ require "mocha"
 require "mocha/minitest"
 require 'active_support/time'
 require 'active_support/testing/time_helpers'
+require "byebug"
 
 Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+
+
+
+
+$debug = false
 
 # File 'lib/active_support/testing/declarative.rb', somewhere in rails....
 class Minitest::Test
@@ -36,4 +45,12 @@ class Minitest::Test
     end
   end
   
+  def debug
+    $debug = true
+        puts '=========================='
+    yield
+  ensure
+        puts '=========================='
+    $debug = false
+  end
 end

@@ -17,7 +17,7 @@ class CookieStore
   def set_cookie(request_uri, set_cookie_value)
     request_uri = URI.parse(request_uri)
     
-    CookieStore::Cookie.parse(request_uri, set_cookie_value) do |cookie|
+    CookieStore::Cookie.parse_cookies(request_uri, set_cookie_value) do |cookie|
       # reject as per RFC2965 Section 3.3.2
       return if !cookie.request_match?(request_uri) || !(cookie.domain =~ /.+\..+/ || cookie.domain == 'localhost')
     
