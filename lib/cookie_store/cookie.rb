@@ -1,37 +1,7 @@
 class CookieStore::Cookie
 
-  QUOTED_PAIR   = "\\\\[\\x00-\\x7F]"
-  LWS           = "\\r\\n(?:[ \\t]+)"
-  QDTEXT        = "[\\t\\x20-\\x21\\x23-\\x3A\\x3C-\\x7E\\x80-\\xFF]|(?:#{LWS})"
-  QUOTED_TEXT   = "(?:#{QUOTED_PAIR}|#{QDTEXT})*"
-  IPADDR        = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
-    
-  TOKEN         = '[^(),\/<>@;:\\\"\[\]?={}\s]+'
-  VALUE         = "(?:#{TOKEN}|#{IPADDR}|[^,;\\s]+)"
-  EXPIRES_AT_VALUE = '[A-Za-z]{3},\ \d{2}[-\ ][A-Za-z]{3}[-\ ]\d{4}\ \d{2}:\d{2}:\d{2}\ (?:[A-Z]{3}|[-+]\d{4})'
-  NUMERICAL_TIMEZONE = /[-+]\d{4}$/
-  
+  IPADDR = /\A#{URI::REGEXP::PATTERN::IPV4ADDR}\Z|\A#{URI::REGEXP::PATTERN::IPV6ADDR}\Z/
 
-  COOKIE    = /(?<name>#{TOKEN})=(?:"(?<quoted_value>#{QUOTED_TEXT})"|(?<value>#{VALUE}))(?<attributes>.*)/n
-  COOKIE_AV = %r{
-    ;\s+
-    (?<key>#{TOKEN})
-    (?:
-      =
-      (?:
-        "(?<quoted_value>#{QUOTED_TEXT})"
-        |
-        (?<value>#{EXPIRES_AT_VALUE}|#{VALUE})
-      )
-    ){0,1}
-  }nx
-  COOKIES = %r{
-      #{TOKEN}=(?:"#{QUOTED_TEXT}"|#{VALUE})
-      (?:;\s+#{TOKEN}(?:=(?:"#{QUOTED_TEXT}"|(?:#{EXPIRES_AT_VALUE}|#{VALUE}))){0,1})*
-  }nx
-  
-
-  
   # [String] The name of the cookie.
   attr_reader :name
   
@@ -87,7 +57,7 @@ class CookieStore::Cookie
   # [Time] Time when this cookie was first evaluated and created.
   attr_reader :created_at
   
-  def initialize(name, value, options={})
+  def initialize(name, value, attributes={})
     @name = name
     @value = value
     @secure = false
@@ -96,8 +66,12 @@ class CookieStore::Cookie
     @discard = false
     @created_at = Time.now
     
-    options.each do |attr_name, attr_value|
-      self.instance_variable_set(:"@#{attr_name}", attr_value)
+    @attributes = attributes
+
+    %i{name value domain path secure http_only version comment comment_url discard ports expires max_age created_at}.each do |attr_name|
+      if attributes.has_key?(attr_name)
+        self.instance_variable_set(:"@#{attr_name}", attributes[attr_name])
+      end
     end
   end
   
@@ -186,75 +160,28 @@ class CookieStore::Cookie
     ports.include?(request_port)
   end
   
+  def self.parse(request_uri, set_cookie_value)
+    parse_cookies(request_uri, set_cookie_value).first
+  end
+  
   def self.parse_cookies(request_uri, set_cookie_value)
     uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
+    
     cookies = []
-    set_cookie_value.scan(COOKIES) do |cookie|
-      cookie = parse(uri, cookie)
+    CookieStore::CookieParser.parse(set_cookie_value) do |parsed|
+      parsed[:attributes][:domain]  ||= uri.host.downcase
+      parsed[:attributes][:path]    ||= uri.path
+
+      cookie = CookieStore::Cookie.new(parsed[:key], parsed[:value], parsed[:attributes])
+
       cookies << if block_given?
         yield(cookie)
       else
         cookie
       end
     end
-    cookies
-  end
-  
-  def self.parse(request_uri, set_cookie_value)
-    uri = request_uri.is_a?(URI) ? request_uri : URI.parse(request_uri)
-    data = COOKIE.match(set_cookie_value)
-    options = {}
-    
-    if !data
-      raise Net::HTTPHeaderSyntaxError.new("Invalid Set-Cookie header format")
-    end
-    
-    if data[:attributes]
-      data[:attributes].scan(COOKIE_AV) do |key, quoted_value, value|
-        value = quoted_value.gsub(/\\(.)/, '\1') if !value && quoted_value
 
-        # RFC 2109 4.1, Attributes (names) are case-insensitive
-        case key.downcase
-        when 'comment'
-          options[:comment] = value
-        when 'commenturl'
-          options[:comment_url] = value
-        when 'discard'
-          options[:discard] = true
-        when 'domain'
-          if value =~ IPADDR
-            options[:domain] = value
-          else
-            # As per RFC2965 if a host name contains no dots, the effective host name is
-            # that name with the string .local appended to it.
-            value = "#{value}.local" if !value.include?('.')
-            options[:domain] = (value.start_with?('.') ? value : ".#{value}").downcase
-          end
-        when 'expires'
-          if value.include?('-') && !value.match(NUMERICAL_TIMEZONE)
-            options[:expires] = DateTime.strptime(value, '%a, %d-%b-%Y %H:%M:%S %Z')
-          else
-            options[:expires] = DateTime.strptime(value, '%a, %d %b %Y %H:%M:%S %Z')
-          end
-        when 'max-age'
-          options[:max_age] = value.to_i
-        when 'path'
-          options[:path] = value
-        when 'port'
-          options[:ports] = value.split(',').map(&:to_i)
-        when 'secure'
-          options[:secure] = true
-        when 'httponly'
-          options[:http_only] = true
-        when 'version'
-          options[:version] = value.to_i
-        end
-      end
-    end
-    options[:domain]  ||= uri.host.downcase
-    options[:path]    ||= uri.path
-    
-    CookieStore::Cookie.new(data[:name], data[:value] || data[:quoted_value].gsub(/\\(.)/, '\1'), options)
+    cookies
   end
     
 end

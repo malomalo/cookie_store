@@ -1,6 +1,8 @@
 require 'uri'
 
 class CookieStore
+
+  autoload :CookieParser,     'cookie_store/cookie_parser'
   
   # Maximum number of bytes per cookie (RFC 6265 6.1 requires at least 4096)
   MAX_COOKIE_LENGTH = 4096

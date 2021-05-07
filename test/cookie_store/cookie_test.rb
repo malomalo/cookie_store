@@ -13,7 +13,7 @@ class CookieStore::CookieTest < Minitest::Test
   
   test "::new(name, value, options)" do
     #TODO: test all options are set
-    cookie = CookieStore::Cookie.new('foo', 'bar', :domain => 'test.com')
+    cookie = CookieStore::Cookie.new('foo', 'bar', domain: 'test.com')
 
     assert_equal 'test.com', cookie.domain
   end
@@ -27,7 +27,7 @@ class CookieStore::CookieTest < Minitest::Test
       '123.456.57.21'             => '123.456.57.21'
       #TODO: not sure how ipv6 works '[E3D7::51F4:9BC8:C0A8:6420]' => '[E3D7::51F4:9BC8:C0A8:6420]'
     }.each do |host, cookie_host|
-      cookie = CookieStore::Cookie.new('key', 'value', :domain => cookie_host)
+      cookie = CookieStore::Cookie.new('key', 'value', domain: cookie_host)
       assert_equal true, cookie.domain_match(host)
     end
     
@@ -43,7 +43,7 @@ class CookieStore::CookieTest < Minitest::Test
       '123.456.57.21'             => '.123.456.57.21'
       #TODO: not sure how ipv6 works '[E3D7::51F4:9BC8:C0A8:6420]' => '[E3D7::51F4:9BC8:C0A8:6421]'
     }.each do |host, cookie_host|
-      cookie = CookieStore::Cookie.new('key', 'value', :domain => cookie_host)
+      cookie = CookieStore::Cookie.new('key', 'value', domain: cookie_host)
       assert_equal false, cookie.domain_match(host)
     end
   end
@@ -55,7 +55,7 @@ class CookieStore::CookieTest < Minitest::Test
       '/test'                     => '/',
       '/this/is/my/url'           => '/this/is'
     }.each do |path, cookie_path|
-      cookie = CookieStore::Cookie.new('key', 'value', :path => cookie_path)
+      cookie = CookieStore::Cookie.new('key', 'value', path: cookie_path)
       assert_equal true, cookie.path_match(path)
     end
     
@@ -63,7 +63,7 @@ class CookieStore::CookieTest < Minitest::Test
       '/test'                     => '/rest',
       '/'                         => '/test'
     }.each do |path, cookie_path|
-      cookie = CookieStore::Cookie.new('key', 'value', :path => cookie_path)
+      cookie = CookieStore::Cookie.new('key', 'value', path: cookie_path)
       assert_equal false, cookie.path_match(path)
     end
   end
@@ -76,7 +76,7 @@ class CookieStore::CookieTest < Minitest::Test
   end
   
   test "::port_match(request_port) with ports attribute set" do
-    cookie = CookieStore::Cookie.new('key', 'value', :ports => [80, 8700])
+    cookie = CookieStore::Cookie.new('key', 'value', ports: [80, 8700])
     assert_equal true, cookie.port_match(8700)
     assert_equal false, cookie.port_match(87)
   end
@@ -97,14 +97,19 @@ class CookieStore::CookieTest < Minitest::Test
   
   test "#expires_at perfers max-age to expires" do
     travel_to Time.new(2013, 12, 13, 8, 26, 12, 0) do
-      cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Max-Age=3600 Expires="Wed, 13 Jan 2021 22:23:01 GMT"')
+      cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Max-Age=3600; Expires="Wed, 13 Jan 2021 22:23:01 GMT"')
       assert_equal Time.new(2013, 12, 13, 9, 26, 12, 0), cookie.expires_at
     end
   end
   
   test "#expires_at returns nil if no max-age or expires attribute" do
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar')
-    assert_equal nil, cookie.expires_at
+    assert_nil cookie.expires_at
+  end
+
+  test "date formats" do
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foor=bar; expires=Fri, 04-Jun-21 14:13:58 GMT; path=/;')
+    assert_equal DateTime.new(2021, 6, 04, 14, 13, 58, 0), cookie.expires_at
   end
   
   # CookieStore::Cookie.expired? =========================================================
@@ -188,13 +193,13 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal '/test',       cookie.path
     assert_equal false,         cookie.secure
     assert_equal false,         cookie.http_only
-    assert_equal nil,           cookie.comment
-    assert_equal nil,           cookie.comment_url
+    assert_nil                  cookie.comment
+    assert_nil                  cookie.comment_url
     assert_equal 1,             cookie.version
     assert_equal false,         cookie.discard
-    assert_equal nil,           cookie.ports
-    assert_equal nil,           cookie.expires
-    assert_equal nil,           cookie.max_age
+    assert_nil                  cookie.ports
+    assert_nil                  cookie.expires
+    assert_nil                  cookie.max_age
   end
   
   test "::parse a cookie with options" do
@@ -206,13 +211,13 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal '/',           cookie.path
     assert_equal false,         cookie.secure
     assert_equal true,          cookie.http_only
-    assert_equal nil,           cookie.comment
-    assert_equal nil,           cookie.comment_url
+    assert_nil                  cookie.comment
+    assert_nil                  cookie.comment_url
     assert_equal 1,             cookie.version
     assert_equal false,         cookie.discard
-    assert_equal nil,           cookie.ports
-    assert_equal nil,           cookie.expires
-    assert_equal nil,           cookie.max_age
+    assert_nil                  cookie.ports
+    assert_nil                  cookie.expires
+    assert_nil                  cookie.max_age
   end
 
   test "::parse normalizes the request domain" do
@@ -234,9 +239,9 @@ class CookieStore::CookieTest < Minitest::Test
   test "::parse a simple quoted cookie" do
     cookie = CookieStore::Cookie.parse('http://google.com/test', 'foo="b\"ar"')
 
-    assert_equal 'google.com', cookie.domain
-    assert_equal 'foo', cookie.name
-    assert_equal 'b"ar', cookie.value
+    assert_equal 'google.com',  cookie.domain
+    assert_equal 'foo',         cookie.name
+    assert_equal 'b"ar',        cookie.value
   end
   
   test "::parse domain attribute without leading ." do
@@ -312,6 +317,19 @@ class CookieStore::CookieTest < Minitest::Test
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13 Jan 2021 22:23:01 GMT"')
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
     
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13 Jan 2021 22:23:01 GMT'")
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    # Wed, 13 Jan 21 22:23:01 GMT format
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13 Jan 21 22:23:01 GMT')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13 Jan 21 22:23:01 GMT"')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13 Jan 21 22:23:01 GMT'")
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
     # Wed, 13-Jan-2021 22:23:01 GMT format
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13-Jan-2021 22:23:01 GMT')
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
@@ -319,11 +337,37 @@ class CookieStore::CookieTest < Minitest::Test
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13-Jan-2021 22:23:01 GMT"')
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
 
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13-Jan-2021 22:23:01 GMT'")
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    # Wed, 13-Jan-21 22:23:01 GMT format
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13-Jan-21 22:23:01 GMT')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13-Jan-21 22:23:01 GMT"')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13-Jan-21 22:23:01 GMT'")
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
     # Wed, 13 Jan 2021 22:23:01 -0000 format
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13 Jan 2021 22:23:01 -0000')
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
 
     cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13 Jan 2021 22:23:01 +0000"')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13 Jan 2021 22:23:01 +0000'")
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+    
+    # Wed, 13 Jan 21 22:23:01 -0000 format
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires=Wed, 13 Jan 21 22:23:01 -0000')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Expires="Wed, 13 Jan 21 22:23:01 +0000"')
+    assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
+
+    cookie = CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Expires='Wed, 13 Jan 21 22:23:01 +0000'")
     assert_equal DateTime.new(2021, 1, 13, 22, 23, 1, 0), cookie.expires
   end
   
@@ -354,7 +398,15 @@ class CookieStore::CookieTest < Minitest::Test
     assert_equal true,                  cookies[1].http_only
   end
   
-  # TODO: test expires_at, based on expires attribute
-  # TODO: test expires_at, based on max-age attribute
+  # CookieStore::Cookie parse invalid cookies =========================================================
+  test "unclosed quotes" do
+    assert_raises Net::HTTPHeaderSyntaxError do
+      CookieStore::Cookie.parse('http://google.com/test/this', 'foo=bar; Max-Age="3660')
+    end
+
+    assert_raises Net::HTTPHeaderSyntaxError do
+      CookieStore::Cookie.parse('http://google.com/test/this', "foo=bar; Max-Age='3660")
+    end
+  end
   
 end
